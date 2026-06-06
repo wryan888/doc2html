@@ -127,11 +127,19 @@ blockquote { border-left: 4px solid rgba(127,127,127,0.4);
 """
 
 
-def document(body: str, title: str | None = None, lang: str = "zh-Hant") -> str:
-    """把 body 片段包成一份完整、可獨立開啟的 HTML 文件。"""
+def document(
+    body: str,
+    title: str | None = None,
+    lang: str = "zh-Hant",
+    css: str | None = None,
+) -> str:
+    """把 body 片段包成一份完整、可獨立開啟的 HTML 文件。
+
+    css 為 None 時用內建預設樣式；傳入字串可整組覆寫（例如深色主題）。
+    """
     return _DOCUMENT_TEMPLATE.format(
         lang=escape(lang),
         title=escape(title or "Untitled Document"),
-        css=_DEFAULT_CSS,
+        css=_DEFAULT_CSS if css is None else css,
         body=body.strip(),
     )

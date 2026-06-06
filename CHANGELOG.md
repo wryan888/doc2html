@@ -3,6 +3,15 @@
 本專案的所有重要變更都記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/)，
 版本遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [0.5.0] - 2026-06-06
+
+### Added
+- **公開 HTML 組裝 API**：新增 `doc2html.html` 模組，把原本內部的 `escape` /
+  `tag` / `void_tag` / `paragraphs` / `table` / `image_data_uri` / `document`
+  公開，供外部專案重用一致的跳脫與文件模板。
+- `document()` 新增選用參數 `css`，可整組覆寫內建樣式（例如深色主題）；
+  未傳入時行為與先前相同（向後相容）。
+
 ## [0.4.0] - 2026-06-06
 
 ### Added

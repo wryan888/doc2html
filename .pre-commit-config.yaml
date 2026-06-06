@@ -1,0 +1,16 @@
+# pre-commit hooks — 在每次 commit 前自動掃描，擋下誤入庫的 API 金鑰 / 機密
+# 安裝：pip install --user pre-commit && pre-commit install
+# 手動全庫掃描：pre-commit run --all-files
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key        # 擋下 PEM / SSH 私鑰
+      - id: check-added-large-files   # 擋下不小心入庫的大檔
+        args: ["--maxkb=2048"]
