@@ -74,7 +74,7 @@ def test_html_escapes_in_full_document(html_file):
 def test_docx_structure(docx_file):
     body = convert(docx_file).body_html
     assert "<h1>報告標題</h1>" in body
-    assert "<strong>" not in body or True  # 內文無粗體，僅確認不崩
+    assert "<p>內文</p>" in body
     assert "<table>" in body
 
 

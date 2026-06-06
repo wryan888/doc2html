@@ -1,6 +1,8 @@
 """分派邏輯、註冊表、錯誤處理的測試。"""
 
 import io
+import logging
+import sys
 
 import pytest
 
@@ -9,6 +11,7 @@ from doc2html import (
     DocumentConverter,
     DocumentConverterResult,
     FileConversionException,
+    MissingDependencyException,
     StreamInfo,
     UnsupportedFormatException,
 )
@@ -109,6 +112,22 @@ def test_accepts_exception_is_skipped(caplog):
 
     engine = Doc2Html()  # 仍有內建純文字兜底
     engine.register_converter(BadAccepts())
-    r = engine.convert(b"plain", stream_info=StreamInfo(extension=".txt"))
+    with caplog.at_level(logging.DEBUG, logger="doc2html"):
+        r = engine.convert(b"plain", stream_info=StreamInfo(extension=".txt"))
     # BadAccepts 被跳過，純文字兜底接手
     assert "<p>plain</p>" in r.body_html
+    # accepts() 的例外有被記錄下來（而非靜默吞掉）
+    assert "BadAccepts" in caplog.text
+
+
+# --- 缺依賴 ---------------------------------------------------------
+
+def test_missing_dependency_raises(monkeypatch):
+    # 讓 `import docx` 失敗，模擬未安裝 python-docx 的環境
+    monkeypatch.setitem(sys.modules, "docx", None)
+    from doc2html.converters.docx_converter import DocxConverter
+
+    with pytest.raises(MissingDependencyException):
+        DocxConverter().convert(
+            io.BytesIO(b"dummy"), StreamInfo(extension=".docx")
+        )

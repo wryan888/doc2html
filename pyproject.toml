@@ -41,6 +41,16 @@ doc2html = "doc2html.__main__:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/doc2html"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "src",
+    "tests",
+    "samples/make_samples.py",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
