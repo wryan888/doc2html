@@ -2,6 +2,10 @@
 
 用 python-docx 走訪段落與表格，依樣式（Heading 1~6、List 等）對應到
 語意化的 HTML 標籤，並把粗體/斜體等行內格式重建為 <strong>/<em>。
+
+v0.2 起額外處理：
+- 超連結（w:hyperlink）→ <a href>（外部連結用 rels 解析，內部錨點用 #anchor）
+- 內嵌圖片（w:drawing/a:blip）→ <img> base64 data URI
 """
 
 from __future__ import annotations
@@ -11,7 +15,7 @@ from typing import BinaryIO
 
 from .._base_converter import DocumentConverter, DocumentConverterResult
 from .._exceptions import MissingDependencyException
-from .._html_builder import escape, table
+from .._html_builder import escape, image_data_uri, table
 from .._stream_info import StreamInfo
 
 _DOCX_EXT = ".docx"
@@ -93,7 +97,7 @@ class DocxConverter(DocumentConverter):
     def _paragraph_html(self, para) -> tuple[str, str]:
         """回傳 (種類, html)。種類為 'ul'/'ol' 時 html 是單一 <li>，
         其餘為 'block'，由呼叫端決定如何組裝。空段落回傳 ('', '')。"""
-        inner = self._runs_html(para)
+        inner = self._paragraph_inner(para)
         if not inner.strip():
             return "", ""
         style = (para.style.name if para.style else "") or ""
@@ -114,20 +118,76 @@ class DocxConverter(DocumentConverter):
             return "block", f"<blockquote>{inner}</blockquote>"
         return "block", f"<p>{inner}</p>"
 
-    def _runs_html(self, para) -> str:
+    def _paragraph_inner(self, para) -> str:
+        """依 XML 順序走訪段落子節點，處理一般 run 與超連結。"""
+        from docx.oxml.ns import qn  # noqa: PLC0415
+        from docx.text.run import Run  # noqa: PLC0415
+
         out = []
-        for run in para.runs:
-            text = escape(run.text)
-            if not text:
-                continue
-            if run.bold:
-                text = f"<strong>{text}</strong>"
-            if run.italic:
-                text = f"<em>{text}</em>"
-            if run.underline:
-                text = f"<u>{text}</u>"
-            out.append(text)
+        for child in para._p:
+            if child.tag == qn("w:r"):
+                out.append(self._format_run(Run(child, para), para))
+            elif child.tag == qn("w:hyperlink"):
+                out.append(self._hyperlink_html(child, para, qn, Run))
         return "".join(out)
+
+    def _format_run(self, run, para) -> str:
+        """單一 run → HTML：優先輸出內嵌圖片，否則套用粗/斜/底線。"""
+        img = self._run_image_html(run, para)
+        if img:
+            return img
+        text = escape(run.text)
+        if not text:
+            return ""
+        if run.bold:
+            text = f"<strong>{text}</strong>"
+        if run.italic:
+            text = f"<em>{text}</em>"
+        if run.underline:
+            text = f"<u>{text}</u>"
+        return text
+
+    def _run_image_html(self, run, para) -> str:
+        """抽出 run 內的內嵌圖片，回傳 <img> data URI（找不到回傳空字串）。"""
+        from docx.oxml.ns import qn  # noqa: PLC0415
+
+        blips = run._element.findall(".//" + qn("a:blip"))
+        out = []
+        for blip in blips:
+            rid = blip.get(qn("r:embed")) or blip.get(qn("r:link"))
+            if not rid:
+                continue
+            try:
+                image_part = para.part.related_parts[rid]
+            except KeyError:
+                continue
+            blob = image_part.blob
+            if not self.embed_images or len(blob) > self.max_image_bytes:
+                out.append("<em>[圖片]</em>")
+                continue
+            out.append(image_data_uri(blob, image_part.content_type, alt=""))
+        return "".join(out)
+
+    def _hyperlink_html(self, h_element, para, qn, Run) -> str:
+        """w:hyperlink → <a>。外部連結走 rels，內部錨點走 #anchor。"""
+        inner = "".join(
+            self._format_run(Run(r, para), para)
+            for r in h_element.findall(qn("w:r"))
+        )
+        if not inner:
+            return ""
+        rid = h_element.get(qn("r:id"))
+        if rid:
+            try:
+                url = para.part.rels[rid].target_ref
+            except KeyError:
+                url = None
+            if url:
+                return f'<a href="{escape(url)}">{inner}</a>'
+        anchor = h_element.get(qn("w:anchor"))
+        if anchor:
+            return f'<a href="#{escape(anchor)}">{inner}</a>'
+        return inner
 
     def _table_html(self, tbl) -> str:
         rows = []

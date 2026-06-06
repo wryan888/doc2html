@@ -54,6 +54,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="只輸出 <main> 內的 HTML 片段，不含完整文件外殼。",
     )
     parser.add_argument(
+        "--no-embed-images",
+        action="store_false",
+        dest="embed_images",
+        help="不要把圖片內嵌為 base64，改輸出文字佔位（DOCX/PPTX）。",
+    )
+    parser.add_argument(
+        "--max-image-bytes",
+        type=int,
+        default=2_000_000,
+        help="單張圖片內嵌大小上限（位元組），超過則退化為佔位（預設 2000000）。",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"doc2html {__version__}",
@@ -63,7 +75,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    engine = Doc2Html()
+    engine = Doc2Html(
+        embed_images=args.embed_images,
+        max_image_bytes=args.max_image_bytes,
+    )
 
     try:
         if args.input:

@@ -4,9 +4,30 @@
 讓核心測試在零依賴環境也能跑。
 """
 
+import io
 import json
+import struct
+import zlib
 
 import pytest
+
+
+def _make_png(width=2, height=2):
+    """程式產生一張合法的 RGB PNG（紅色），含正確 CRC，給內嵌圖片測試用。"""
+
+    def chunk(typ, data):
+        body = typ + data
+        crc = zlib.crc32(body) & 0xFFFFFFFF
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", crc)
+
+    sig = b"\x89PNG\r\n\x1a\n"
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)  # 8-bit RGB
+    raw = b"".join(b"\x00" + b"\xff\x00\x00" * width for _ in range(height))
+    idat = zlib.compress(raw)
+    return sig + chunk(b"IHDR", ihdr) + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
+
+
+PNG_1x1 = _make_png()
 
 
 @pytest.fixture
@@ -74,6 +95,36 @@ def docx_file(tmp_path):
 
 
 @pytest.fixture
+def docx_rich_file(tmp_path):
+    """含超連結與內嵌圖片的 DOCX。"""
+    docx = pytest.importorskip("docx")
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from docx.oxml.shared import OxmlElement, qn
+
+    p = tmp_path / "rich.docx"
+    d = docx.Document()
+    para = d.add_paragraph("前往 ")
+
+    # 手動加一個外部超連結 run
+    r_id = para.part.relate_to(
+        "https://example.com", RT.HYPERLINK, is_external=True
+    )
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+    run = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "範例網站"
+    run.append(t)
+    hyperlink.append(run)
+    para._p.append(hyperlink)
+
+    # 內嵌圖片（自成一段）
+    d.add_picture(io.BytesIO(PNG_1x1))
+    d.save(p)
+    return p
+
+
+@pytest.fixture
 def xlsx_file(tmp_path):
     openpyxl = pytest.importorskip("openpyxl")
     p = tmp_path / "sample.xlsx"
@@ -111,9 +162,44 @@ def pptx_file(tmp_path):
 
 
 @pytest.fixture
+def pptx_image_file(tmp_path):
+    """含內嵌圖片的 PPTX。"""
+    pptx = pytest.importorskip("pptx")
+    from pptx.util import Inches
+
+    p = tmp_path / "img.pptx"
+    prs = pptx.Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[5])
+    slide.shapes.title.text = "圖片頁"
+    slide.shapes.add_picture(
+        io.BytesIO(PNG_1x1), Inches(1), Inches(1), Inches(1), Inches(1)
+    )
+    prs.save(p)
+    return p
+
+
+@pytest.fixture
+def pdf_table_file(tmp_path):
+    """含一個有框線表格的 PDF（pdfplumber 可偵測）。"""
+    pytest.importorskip("pdfplumber")
+    pytest.importorskip("reportlab")
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, TableStyle
+    from reportlab.platypus import Table as RLTable
+
+    p = tmp_path / "table.pdf"
+    doc = SimpleDocTemplate(str(p))
+    data = [["Name", "Price"], ["Apple", "30"], ["Banana", "15"]]
+    t = RLTable(data)
+    t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 1, colors.black)]))
+    doc.build([t])
+    return p
+
+
+@pytest.fixture
 def pdf_file(tmp_path):
     pytest.importorskip("reportlab")
-    pytest.importorskip("pdfminer")
+    pytest.importorskip("pdfplumber")
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
 

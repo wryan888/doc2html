@@ -9,16 +9,19 @@
 
 ## 支援格式
 
-| 格式 | 副檔名 | 依賴套件 |
-|------|--------|----------|
-| PDF | `.pdf` | `pdfminer.six` |
-| Word | `.docx` | `python-docx` |
-| Excel | `.xlsx` / `.xlsm` | `openpyxl` |
-| PowerPoint | `.pptx` | `python-pptx` |
-| HTML | `.html` / `.htm` | `beautifulsoup4`（選用，無則退化處理） |
-| CSV / TSV | `.csv` / `.tsv` | 內建 |
-| JSON | `.json` / `.jsonl` | 內建 |
-| 純文字 | `.txt` / `.md` / … | 內建（也是兜底轉換器） |
+| 格式 | 副檔名 | 依賴套件 | 重點能力 |
+|------|--------|----------|----------|
+| PDF | `.pdf` | `pdfplumber` | 文字、字級啟發式標題、**表格抽取** |
+| Word | `.docx` | `python-docx` | 標題/清單/表格、粗斜底線、**超連結**、**內嵌圖片** |
+| Excel | `.xlsx` / `.xlsm` | `openpyxl` | 多工作表、表頭啟發式 |
+| PowerPoint | `.pptx` | `python-pptx` | 投影片分段、備忘稿、表格、**內嵌圖片** |
+| HTML | `.html` / `.htm` | `beautifulsoup4`（選用，無則退化處理） | 清理 script/style、抽 article/main |
+| CSV / TSV | `.csv` / `.tsv` | 內建 | Sniffer 猜分隔符 |
+| JSON | `.json` / `.jsonl` | 內建 | 巢狀遞迴渲染 |
+| 純文字 | `.txt` / `.md` / … | 內建（也是兜底轉換器） | 段落/換行 |
+
+> **v0.2 新增**：DOCX 超連結、PDF 表格抽取（改用 pdfplumber）、DOCX/PPTX 圖片以
+> base64 data URI 內嵌（可關閉，見下方）。
 
 ## 安裝
 
@@ -36,6 +39,8 @@ doc2html data.xlsx -o data.html          # 指定輸出檔
 cat notes.txt | doc2html --extension .txt   # 從 stdin 讀
 doc2html page.html --fragment            # 只輸出 <main> 片段，不含完整外殼
 doc2html slides.pptx --title "我的簡報"   # 覆寫 <title>
+doc2html report.docx --no-embed-images   # 圖片改輸出文字佔位，不內嵌 base64
+doc2html report.docx --max-image-bytes 500000  # 超過 500KB 的圖片不內嵌
 ```
 
 ## Python API
@@ -61,6 +66,19 @@ from doc2html import Doc2Html, StreamInfo
 
 data = open("data.csv", "rb").read()
 result = Doc2Html().convert(data, stream_info=StreamInfo(extension=".csv"))
+```
+
+### 圖片內嵌選項
+
+DOCX/PPTX 內的圖片預設會以 base64 data URI 內嵌，輸出單檔即可離線開啟。
+可在建立引擎時調整：
+
+```python
+# 完全不內嵌圖片，改輸出文字佔位
+Doc2Html(embed_images=False).convert("report.docx")
+
+# 只內嵌 500KB 以下的圖片，較大者退化為佔位
+Doc2Html(max_image_bytes=500_000).convert("slides.pptx")
 ```
 
 ## 架構（對照 markitdown）

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Iterable, Sequence
 from html import escape as _escape
 
@@ -41,6 +42,13 @@ def _attrs_to_str(attrs: dict) -> str:
         else:
             parts.append(f' {key}="{escape(value)}"')
     return "".join(parts)
+
+
+def image_data_uri(blob: bytes, content_type: str, alt: str = "") -> str:
+    """把圖片位元組組成 <img>，src 為 base64 data URI。"""
+    b64 = base64.b64encode(blob).decode("ascii")
+    src = f"data:{content_type};base64,{b64}"
+    return void_tag("img", src=src, alt=alt)
 
 
 def paragraphs(text: str) -> str:

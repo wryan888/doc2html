@@ -61,12 +61,22 @@ class Doc2Html:
         open("out.html", "w").write(result.html)
     """
 
-    def __init__(self, *, enable_builtins: bool = True):
+    def __init__(
+        self,
+        *,
+        enable_builtins: bool = True,
+        embed_images: bool = True,
+        max_image_bytes: int = 2_000_000,
+    ):
         self._registrations: list[_Registration] = []
         self._counter = 0
         if enable_builtins:
+            opts = {
+                "embed_images": embed_images,
+                "max_image_bytes": max_image_bytes,
+            }
             for cls in _BUILTIN_CONVERTERS:
-                self.register_converter(cls())
+                self.register_converter(cls(**opts))
 
     # ---- 轉換器註冊 -------------------------------------------------
 

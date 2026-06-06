@@ -9,7 +9,7 @@ from typing import BinaryIO
 
 from .._base_converter import DocumentConverter, DocumentConverterResult
 from .._exceptions import MissingDependencyException
-from .._html_builder import escape, table
+from .._html_builder import escape, image_data_uri, table
 from .._stream_info import StreamInfo
 
 _PPTX_EXT = ".pptx"
@@ -56,8 +56,7 @@ class PptxConverter(DocumentConverter):
                 if shape == _title_shape(slide):
                     continue  # 標題已輸出
                 if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
-                    alt = _picture_alt(shape) or "圖片"
-                    section.append(f'<p><em>[圖片：{escape(alt)}]</em></p>')
+                    section.append(self._picture_html(shape))
                 elif shape.has_table:
                     section.append(_table_html(shape.table))
                 elif shape.has_text_frame:
@@ -77,6 +76,23 @@ class PptxConverter(DocumentConverter):
         return DocumentConverterResult(
             "\n".join(parts), title=first_title or stream_info.filename
         )
+
+    def _picture_html(self, shape) -> str:
+        """圖片 shape → <img> base64（失敗或超大則回退為文字佔位）。"""
+        alt = _picture_alt(shape) or ""
+        if self.embed_images:
+            try:
+                image = shape.image
+                blob = image.blob
+                if len(blob) <= self.max_image_bytes:
+                    return (
+                        "<p>"
+                        + image_data_uri(blob, image.content_type, alt=alt)
+                        + "</p>"
+                    )
+            except Exception:
+                pass  # 取不到圖片資料就退回佔位
+        return f'<p><em>[圖片：{escape(alt or "圖片")}]</em></p>'
 
 
 def _title_shape(slide):

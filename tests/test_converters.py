@@ -89,6 +89,24 @@ def test_docx_title_from_heading(docx_file):
     assert convert(docx_file).title == "報告標題"
 
 
+def test_docx_hyperlink(docx_rich_file):
+    body = convert(docx_rich_file).body_html
+    assert '<a href="https://example.com">範例網站</a>' in body
+
+
+def test_docx_embeds_image(docx_rich_file):
+    body = convert(docx_rich_file).body_html
+    assert '<img src="data:image/png;base64,' in body
+
+
+def test_docx_image_placeholder_when_disabled(docx_rich_file):
+    from doc2html import Doc2Html
+
+    body = Doc2Html(embed_images=False).convert(str(docx_rich_file)).body_html
+    assert "data:image/png" not in body
+    assert "[圖片]" in body
+
+
 # --- XLSX -----------------------------------------------------------
 
 def test_xlsx_sheet_with_header(xlsx_file):
@@ -114,6 +132,11 @@ def test_pptx_slides(pptx_file):
     assert "<li>重點一</li>" in body
 
 
+def test_pptx_embeds_image(pptx_image_file):
+    body = convert(pptx_image_file).body_html
+    assert '<img src="data:image/png;base64,' in body
+
+
 # --- PDF ------------------------------------------------------------
 
 def test_pdf_text_and_heading(pdf_file):
@@ -122,3 +145,10 @@ def test_pdf_text_and_heading(pdf_file):
     assert 'class="page"' in body
     assert "PDF Heading" in body
     assert "Body paragraph text." in body
+
+
+def test_pdf_table_extraction(pdf_table_file):
+    body = convert(pdf_table_file).body_html
+    assert "<table>" in body
+    assert "<th>Name</th>" in body
+    assert "<td>Apple</td>" in body
