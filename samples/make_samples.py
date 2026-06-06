@@ -1,4 +1,5 @@
 """產生各格式的測試樣本檔，用來驗證 doc2html。"""
+import io
 import json
 import os
 
@@ -95,5 +96,45 @@ try:
     print("pdf OK")
 except Exception as e:
     print("pdf 跳過 (需 reportlab):", e)
+
+# --- 掃描影像 PDF（無文字層，給 OCR 示範用）---
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+
+    def _font(size):
+        # 優先用含中文字的系統字型（macOS）；找不到就退回預設
+        for path in [
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/STHeiti Medium.ttc",
+        ]:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                pass
+        return ImageFont.load_default()
+
+    img = Image.new("RGB", (1000, 500), "white")
+    draw = ImageDraw.Draw(img)
+    draw.text((40, 40), "出貨單 Shipping Note", fill="black", font=_font(54))
+    draw.text((40, 140), "單號 No: 2026-0042", fill="black", font=_font(40))
+    draw.text((40, 210), "品名: 藍牙耳機  數量: 3  單價: $1,290",
+              fill="black", font=_font(40))
+    draw.text((40, 280), "Total Amount: $3,870", fill="black", font=_font(40))
+    draw.text((40, 360), "備註: 隔日到貨，請當面驗收。",
+              fill="black", font=_font(36))
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    buf.seek(0)
+
+    page_w, page_h = A4
+    c = canvas.Canvas(p("scanned_demo.pdf"), pagesize=A4)
+    c.drawImage(ImageReader(buf), 40, page_h - 420, width=page_w - 80, height=300)
+    c.save()
+    print("scanned_demo (OCR 示範) OK")
+except Exception as e:
+    print("scanned_demo 跳過 (需 reportlab + pillow):", e)
 
 print("樣本產生完成")
