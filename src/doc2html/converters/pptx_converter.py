@@ -1,16 +1,20 @@
 """PowerPoint (.pptx) 轉換器：每張投影片轉成一個 <section>。
 
-抽出標題、條列文字、表格與圖片的替代文字（alt text）。
+抽出標題、條列文字、表格、講者備忘稿，圖片以 base64 內嵌
+（可關閉，超大則退化為文字佔位）。
 """
 
 from __future__ import annotations
 
+import logging
 from typing import BinaryIO
 
 from .._base_converter import DocumentConverter, DocumentConverterResult
 from .._exceptions import MissingDependencyException
 from .._html_builder import escape, image_data_uri, table
 from .._stream_info import StreamInfo
+
+logger = logging.getLogger("doc2html")
 
 _PPTX_EXT = ".pptx"
 _PPTX_MIME = (
@@ -91,7 +95,8 @@ class PptxConverter(DocumentConverter):
                         + "</p>"
                     )
             except Exception:
-                pass  # 取不到圖片資料就退回佔位
+                # 取不到圖片資料就退回佔位，但記下來方便除錯
+                logger.debug("PPTX 圖片擷取失敗，改用佔位", exc_info=True)
         return f'<p><em>[圖片：{escape(alt or "圖片")}]</em></p>'
 
 

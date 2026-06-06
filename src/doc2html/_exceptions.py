@@ -8,7 +8,7 @@ class Doc2HtmlException(Exception):
 
 
 class MissingDependencyException(Doc2HtmlException):
-    """需要的第三方套件沒安裝時拋出（例如要轉 PDF 卻沒裝 pdfminer）。"""
+    """需要的第三方套件沒安裝時拋出（例如要轉 PDF 卻沒裝 pdfplumber）。"""
 
 
 class UnsupportedFormatException(Doc2HtmlException):

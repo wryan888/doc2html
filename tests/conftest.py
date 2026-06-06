@@ -125,6 +125,27 @@ def docx_rich_file(tmp_path):
 
 
 @pytest.fixture
+def docx_anchor_file(tmp_path):
+    """含內部錨點超連結（w:anchor，無 r:id）的 DOCX。"""
+    docx = pytest.importorskip("docx")
+    from docx.oxml.shared import OxmlElement, qn
+
+    p = tmp_path / "anchor.docx"
+    d = docx.Document()
+    para = d.add_paragraph("跳到 ")
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("w:anchor"), "_Toc123")
+    run = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "第一章"
+    run.append(t)
+    hyperlink.append(run)
+    para._p.append(hyperlink)
+    d.save(p)
+    return p
+
+
+@pytest.fixture
 def xlsx_file(tmp_path):
     openpyxl = pytest.importorskip("openpyxl")
     p = tmp_path / "sample.xlsx"
@@ -193,6 +214,31 @@ def pdf_table_file(tmp_path):
     t = RLTable(data)
     t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 1, colors.black)]))
     doc.build([t])
+    return p
+
+
+@pytest.fixture
+def pdf_mixed_file(tmp_path):
+    """含「標題 → 表格 → 內文」的 PDF，用來驗證交錯排序。"""
+    pytest.importorskip("pdfplumber")
+    pytest.importorskip("reportlab")
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, TableStyle
+    from reportlab.platypus import Table as RLTable
+
+    p = tmp_path / "mixed.pdf"
+    styles = getSampleStyleSheet()
+    t = RLTable([["Col", "Val"], ["x", "1"]])
+    t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 1, colors.black)]))
+    story = [
+        Paragraph("TopHeading", styles["Title"]),
+        Spacer(1, 12),
+        t,
+        Spacer(1, 12),
+        Paragraph("Bottom body text here.", styles["Normal"]),
+    ]
+    SimpleDocTemplate(str(p)).build(story)
     return p
 
 

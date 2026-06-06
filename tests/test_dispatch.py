@@ -131,3 +131,14 @@ def test_missing_dependency_raises(monkeypatch):
         DocxConverter().convert(
             io.BytesIO(b"dummy"), StreamInfo(extension=".docx")
         )
+
+
+def test_missing_dependency_pdf(monkeypatch):
+    # 讓 `import pdfplumber` 失敗，模擬未安裝的環境
+    monkeypatch.setitem(sys.modules, "pdfplumber", None)
+    from doc2html.converters.pdf_converter import PdfConverter
+
+    with pytest.raises(MissingDependencyException):
+        PdfConverter().convert(
+            io.BytesIO(b"%PDF-1.4"), StreamInfo(extension=".pdf")
+        )

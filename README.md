@@ -115,6 +115,10 @@ engine = Doc2Html()
 engine.register_converter(MyConverter())   # 同優先序時，後註冊者優先
 ```
 
+> 注意：`embed_images` / `max_image_bytes` 只會自動套用到**內建**轉換器。
+> 透過 `register_converter()` 手動加入的自訂轉換器若也要處理圖片，
+> 需自行把這些選項傳進它的建構子（例如 `MyConverter(embed_images=engine_opt)`）。
+
 ## 開發
 
 ```bash

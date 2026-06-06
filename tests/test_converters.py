@@ -94,6 +94,11 @@ def test_docx_hyperlink(docx_rich_file):
     assert '<a href="https://example.com">範例網站</a>' in body
 
 
+def test_docx_internal_anchor(docx_anchor_file):
+    body = convert(docx_anchor_file).body_html
+    assert '<a href="#_Toc123">第一章</a>' in body
+
+
 def test_docx_embeds_image(docx_rich_file):
     body = convert(docx_rich_file).body_html
     assert '<img src="data:image/png;base64,' in body
@@ -103,6 +108,15 @@ def test_docx_image_placeholder_when_disabled(docx_rich_file):
     from doc2html import Doc2Html
 
     body = Doc2Html(embed_images=False).convert(str(docx_rich_file)).body_html
+    assert "data:image/png" not in body
+    assert "[圖片]" in body
+
+
+def test_docx_image_threshold(docx_rich_file):
+    from doc2html import Doc2Html
+
+    # 圖片大於 10 bytes，max_image_bytes=10 應退化為佔位
+    body = Doc2Html(max_image_bytes=10).convert(str(docx_rich_file)).body_html
     assert "data:image/png" not in body
     assert "[圖片]" in body
 
@@ -152,3 +166,12 @@ def test_pdf_table_extraction(pdf_table_file):
     assert "<table>" in body
     assert "<th>Name</th>" in body
     assert "<td>Apple</td>" in body
+
+
+def test_pdf_interleave_order(pdf_mixed_file):
+    body = convert(pdf_mixed_file).body_html
+    # 依垂直位置排序：標題在表格之前，內文在表格之後
+    assert "TopHeading" in body and "<table>" in body and "Bottom body" in body
+    assert body.index("TopHeading") < body.index("<table>") < body.index(
+        "Bottom body"
+    )

@@ -35,6 +35,21 @@ def test_cli_stdin(monkeypatch, capsys):
     assert "<th>a</th>" in out
 
 
+def test_cli_no_embed_images(docx_rich_file, capsys):
+    rc = main([str(docx_rich_file), "--no-embed-images", "--fragment"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "data:image/png" not in out
+    assert "[圖片]" in out
+
+
+def test_cli_max_image_bytes(docx_rich_file, capsys):
+    rc = main([str(docx_rich_file), "--max-image-bytes", "10", "--fragment"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "data:image/png" not in out
+
+
 def test_cli_error_returns_1(tmp_path, capsys):
     # 二進位、無副檔名 → 找不到轉換器 → 回傳 1
     bad = tmp_path / "blob"
