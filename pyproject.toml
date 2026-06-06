@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "doc2html"
+version = "0.1.0"
+description = "把多種文件格式（PDF/Word/Excel/PPT/HTML/CSV/JSON/純文字）轉成 HTML，靈感來自 microsoft/markitdown。"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "ryanwang" }]
+keywords = ["html", "converter", "pdf", "docx", "xlsx", "pptx", "markitdown"]
+
+# 核心不強制任何重依賴；各格式依賴放在 optional-dependencies。
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["pdfminer.six>=20221105"]
+docx = ["python-docx>=1.1.0"]
+xlsx = ["openpyxl>=3.1.0"]
+pptx = ["python-pptx>=0.6.23"]
+html = ["beautifulsoup4>=4.12.0"]
+all = [
+    "pdfminer.six>=20221105",
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.0",
+    "python-pptx>=0.6.23",
+    "beautifulsoup4>=4.12.0",
+]
+dev = [
+    "doc2html[all]",
+    "pytest>=8.0",
+    "reportlab>=4.0",  # 產生測試用 PDF
+    "ruff>=0.6",
+]
+
+[project.scripts]
+doc2html = "doc2html.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/doc2html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
