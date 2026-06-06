@@ -25,6 +25,10 @@ samples/*.xlsx
 samples/*.pptx
 samples/*.pdf
 
+# 機密：API 金鑰等
+.env
+.env.*
+
 # 編輯器 / 作業系統
 .DS_Store
 .idea/

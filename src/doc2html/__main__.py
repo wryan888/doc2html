@@ -66,6 +66,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="單張圖片內嵌大小上限（位元組），超過則退化為佔位（預設 2000000）。",
     )
     parser.add_argument(
+        "--ocr",
+        choices=["none", "gemini"],
+        default="none",
+        help="掃描 PDF（無文字層）的 OCR 後端，預設 none（不啟用）。"
+        "gemini 需設定 GEMINI_API_KEY 並安裝 'doc2html[ocr-gemini]'。",
+    )
+    parser.add_argument(
+        "--ocr-model",
+        default="gemini-2.5-flash",
+        help="OCR 使用的模型（gemini 後端適用，預設 gemini-2.5-flash）。",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"doc2html {__version__}",
@@ -73,11 +85,20 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _build_ocr(args):
+    if args.ocr == "gemini":
+        from .ocr import GeminiOcr
+
+        return GeminiOcr(model=args.ocr_model)
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     engine = Doc2Html(
         embed_images=args.embed_images,
         max_image_bytes=args.max_image_bytes,
+        ocr=_build_ocr(args),
     )
 
     try:

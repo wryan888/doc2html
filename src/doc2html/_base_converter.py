@@ -34,16 +34,20 @@ class DocumentConverter:
         *,
         embed_images: bool = True,
         max_image_bytes: int = 2_000_000,
+        ocr=None,
         **_ignored,
     ):
         """共用選項：
 
         embed_images   是否把文件內的圖片以 base64 data URI 內嵌（預設 True）。
         max_image_bytes 單張圖片超過此大小（位元組）就退化為文字佔位，避免輸出爆量。
+        ocr            OcrBackend 實例（預設 None＝不啟用）；目前僅 PDF 轉換器
+                       會在掃描頁（無文字層）時使用。
         不在意這些選項的轉換器（CSV、JSON…）直接忽略即可。
         """
         self.embed_images = embed_images
         self.max_image_bytes = max_image_bytes
+        self.ocr = ocr
 
     def accepts(self, file_stream: BinaryIO, stream_info: StreamInfo) -> bool:
         """這個轉換器能不能處理這份輸入？

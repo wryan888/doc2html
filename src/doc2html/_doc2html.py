@@ -67,6 +67,7 @@ class Doc2Html:
         enable_builtins: bool = True,
         embed_images: bool = True,
         max_image_bytes: int = 2_000_000,
+        ocr=None,
     ):
         self._registrations: list[_Registration] = []
         self._counter = 0
@@ -74,6 +75,7 @@ class Doc2Html:
             opts = {
                 "embed_images": embed_images,
                 "max_image_bytes": max_image_bytes,
+                "ocr": ocr,
             }
             for cls in _BUILTIN_CONVERTERS:
                 self.register_converter(cls(**opts))

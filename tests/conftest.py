@@ -278,6 +278,24 @@ def pdf_mixed_file(tmp_path):
 
 
 @pytest.fixture
+def pdf_scanned_file(tmp_path):
+    """只含影像、沒有文字層的 PDF，模擬掃描檔（觸發 OCR 後備）。"""
+    pytest.importorskip("pdfplumber")
+    pytest.importorskip("reportlab")
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+
+    p = tmp_path / "scanned.pdf"
+    c = canvas.Canvas(str(p), pagesize=letter)
+    c.drawImage(
+        ImageReader(io.BytesIO(_make_png(40, 40))), 100, 500, width=200, height=200
+    )
+    c.save()
+    return p
+
+
+@pytest.fixture
 def pdf_file(tmp_path):
     pytest.importorskip("reportlab")
     pytest.importorskip("pdfplumber")

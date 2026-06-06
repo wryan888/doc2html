@@ -6,11 +6,15 @@
 3. 把剩餘的詞依垂直位置分行、再依間距合併成段落；字級偏大的單行視為標題。
 4. 把表格與文字段落依垂直位置（top）交錯排序，輸出成符合閱讀順序的 HTML。
 
-PDF 沒有可靠的語意結構，以上皆為啟發式；掃描影像 PDF（無文字層）會提示需 OCR。
+PDF 沒有可靠的語意結構，以上皆為啟發式。
+
+掃描影像 PDF（無文字層）：若建立 Doc2Html 時傳入 OCR 後端（ocr=...），
+會用 pypdfium2 把該頁 rasterize 成 PNG 再交給後端轉 HTML；未設定則提示需 OCR。
 """
 
 from __future__ import annotations
 
+import io
 from typing import BinaryIO
 
 from .._base_converter import DocumentConverter, DocumentConverterResult
@@ -52,30 +56,65 @@ class PdfConverter(DocumentConverter):
                 "pip install 'doc2html[pdf]'"
             ) from exc
 
+        # 一次讀進 bytes：pdfplumber 抽文字、pypdfium2 在 OCR 時 rasterize 共用
+        data = file_stream.read()
+
         parts: list[str] = []
         title: str | None = None
         had_content = False
+        # 只有設定 OCR 後端時才會開 pypdfium2 文件來 rasterize 掃描頁
+        pdfium_doc = self._open_pdfium(data) if self.ocr is not None else None
 
-        with pdfplumber.open(file_stream) as pdf:
-            for page_no, page in enumerate(pdf.pages, start=1):
-                items, page_title = self._page_items(page)
-                if page_title and title is None:
-                    title = page_title
-                parts.append(f'<section class="page" id="page-{page_no}">')
-                for _top, html in items:
-                    parts.append(html)
-                    had_content = True
-                parts.append("</section>")
+        try:
+            with pdfplumber.open(io.BytesIO(data)) as pdf:
+                for page_no, page in enumerate(pdf.pages, start=1):
+                    items, page_title = self._page_items(page)
+                    if page_title and title is None:
+                        title = page_title
+                    parts.append(f'<section class="page" id="page-{page_no}">')
+                    if items:
+                        for _top, html in items:
+                            parts.append(html)
+                            had_content = True
+                    elif pdfium_doc is not None:
+                        # 這頁沒有文字層 → rasterize 後交給 OCR 後端
+                        ocr_html = self._ocr_page(pdfium_doc, page_no - 1)
+                        if ocr_html:
+                            parts.append(ocr_html)
+                            had_content = True
+                    parts.append("</section>")
+        finally:
+            if pdfium_doc is not None:
+                pdfium_doc.close()
 
         if not had_content:
             parts.append(
-                "<p><em>（未抽取到文字，可能是掃描影像 PDF，"
-                "需要 OCR 才能處理）</em></p>"
+                "<p><em>（未抽取到文字，可能是掃描影像 PDF；"
+                "傳入 OCR 後端即可處理，例如 Doc2Html(ocr=GeminiOcr())）</em></p>"
             )
 
         return DocumentConverterResult(
             "\n".join(parts), title=title or stream_info.filename
         )
+
+    def _open_pdfium(self, data: bytes):
+        try:
+            import pypdfium2 as pdfium  # noqa: PLC0415
+        except ImportError as exc:
+            raise MissingDependencyException(
+                "OCR 需要 pypdfium2 與 pillow 來把頁面轉成圖片，請執行："
+                "pip install 'doc2html[ocr]'（或 [ocr-gemini]）"
+            ) from exc
+        return pdfium.PdfDocument(data)
+
+    def _ocr_page(self, pdfium_doc, index: int, scale: float = 2.0) -> str:
+        """把第 index 頁 rasterize 成 PNG，交給 OCR 後端轉 HTML。"""
+        page = pdfium_doc[index]
+        bitmap = page.render(scale=scale)
+        pil_image = bitmap.to_pil()
+        buf = io.BytesIO()
+        pil_image.save(buf, format="PNG")
+        return self.ocr.image_to_html(buf.getvalue(), lang="auto")
 
     def _page_items(self, page):
         """回傳 (依 top 排序的 [(top, html)], 本頁推測標題)。"""

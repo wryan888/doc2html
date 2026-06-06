@@ -9,8 +9,9 @@ from ._exceptions import (
     UnsupportedFormatException,
 )
 from ._stream_info import StreamInfo
+from .ocr import GeminiOcr, OcrBackend
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "Doc2Html",
@@ -18,6 +19,8 @@ __all__ = [
     "DocumentConverter",
     "DocumentConverterResult",
     "StreamInfo",
+    "OcrBackend",
+    "GeminiOcr",
     "Doc2HtmlException",
     "MissingDependencyException",
     "UnsupportedFormatException",

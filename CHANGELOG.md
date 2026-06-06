@@ -3,6 +3,23 @@
 本專案的所有重要變更都記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/)，
 版本遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [0.4.0] - 2026-06-06
+
+### Added
+- **掃描 PDF 的可插拔 OCR**：新增 `OcrBackend` 介面與內建 `GeminiOcr`
+  （Google Gemini vision）。PDF 轉換器在某頁無文字層時，用 pypdfium2 把該頁
+  rasterize 成 PNG，交給後端轉成 HTML。
+- `Doc2Html(ocr=...)` 與 CLI `--ocr {none,gemini}` / `--ocr-model`。
+- 新增 extras：`ocr`（pypdfium2 + pillow，rasterize，後端無關）、
+  `ocr-gemini`（再加 google-genai）。
+
+### Notes
+- **預設不啟用、不外連**：未傳入 `ocr=` 時行為與先前相同（掃描檔僅提示需 OCR）。
+- 啟用後文件頁面會送到雲端 API（隱私/成本請自行評估）；prompt 已明確要求
+  忠實轉錄、禁止捏造，以降低幻覺風險。
+- 後端可換：自訂類別實作 `image_to_html(png, *, lang)` 即可接 Tesseract / 其他
+  vision LLM。
+
 ## [0.3.0] - 2026-06-06
 
 ### Added
@@ -51,6 +68,7 @@
 - 工程基礎：pytest 測試、ruff lint、GitHub Actions CI（Python 3.10–3.13）、
   sdist/wheel 打包、MIT 授權。
 
+[0.4.0]: https://github.com/wryan888/doc2html/releases/tag/v0.4.0
 [0.3.0]: https://github.com/wryan888/doc2html/releases/tag/v0.3.0
 [0.2.1]: https://github.com/wryan888/doc2html/releases/tag/v0.2.1
 [0.2.0]: https://github.com/wryan888/doc2html/releases/tag/v0.2.0

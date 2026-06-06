@@ -11,7 +11,7 @@
 
 | 格式 | 副檔名 | 依賴套件 | 重點能力 |
 |------|--------|----------|----------|
-| PDF | `.pdf` | `pdfplumber` | 文字、字級啟發式標題、**表格抽取** |
+| PDF | `.pdf` | `pdfplumber` | 文字、字級啟發式標題、**表格抽取**、掃描檔**雲端 OCR**（選用） |
 | Word | `.docx` | `python-docx` | 標題/清單/表格、粗斜底線、**超連結**、**書籤錨點**、**內嵌圖片** |
 | Excel | `.xlsx` / `.xlsm` | `openpyxl` | 多工作表、表頭啟發式 |
 | PowerPoint | `.pptx` | `python-pptx` | 投影片分段、備忘稿、表格、**內嵌圖片** |
@@ -25,6 +25,9 @@
 >
 > **v0.3 新增**：DOCX 書籤（`w:bookmarkStart`）→ `<a id>`，讓內部錨點連結
 > （目錄/交叉參考）在輸出的 HTML 裡真正能跳轉。
+>
+> **v0.4 新增**：掃描 PDF（無文字層）的**可插拔 OCR**——預設不啟用、不送雲端；
+> 傳入 OcrBackend 才會把該頁 rasterize 後送去辨識。內建 `GeminiOcr`。
 
 ## 安裝
 
@@ -82,6 +85,43 @@ Doc2Html(embed_images=False).convert("report.docx")
 
 # 只內嵌 500KB 以下的圖片，較大者退化為佔位
 Doc2Html(max_image_bytes=500_000).convert("slides.pptx")
+```
+
+## 掃描 PDF 的 OCR（選用、雲端）
+
+無文字層的掃描 PDF 需要 OCR。doc2html 採**可插拔後端**設計：**預設不啟用、
+不會把任何資料送上雲端**；只有當你明確傳入 OCR 後端、且某頁沒有文字層時，
+才會把該頁 rasterize 成圖片送去辨識。
+
+```bash
+pip install 'doc2html[ocr-gemini]'   # 安裝 rasterize(pypdfium2+pillow) + google-genai
+export GEMINI_API_KEY=你的金鑰
+doc2html scanned.pdf --ocr gemini > out.html
+```
+
+```python
+from doc2html import Doc2Html, GeminiOcr
+
+engine = Doc2Html(ocr=GeminiOcr())            # 讀 GEMINI_API_KEY
+print(engine.convert("scanned.pdf").html)
+```
+
+設計與注意事項：
+- **本地優先**：沒傳 `ocr=` 時行為跟以前一樣（掃描檔只提示需 OCR），不外連。
+- **只處理掃描頁**：有文字層的頁面完全走本地路徑，不送雲端。
+- **隱私/成本**：啟用後文件頁面會送到雲端 API，請自行評估。
+- **降低幻覺**：prompt 明確要求忠實轉錄、禁止捏造、看不清留空。
+- **可換後端**：自訂類別只要實作 `OcrBackend`（`image_to_html(png, *, lang)`）
+  即可接 Tesseract、Claude、GPT-4o 等，介面一致。
+
+```python
+from doc2html import Doc2Html
+
+class MyOcr:                                   # 符合 OcrBackend 協定即可
+    def image_to_html(self, image_png, *, lang="auto"):
+        return "<p>...</p>"
+
+Doc2Html(ocr=MyOcr()).convert("scanned.pdf")
 ```
 
 ## 架構（對照 markitdown）
