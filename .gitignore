@@ -25,9 +25,10 @@ samples/*.xlsx
 samples/*.pptx
 samples/*.pdf
 
-# 機密：API 金鑰等
+# 機密：API 金鑰等（金鑰建議放 ~/.secrets，勿進專案夾）
 .env
 .env.*
+.secrets
 
 # 編輯器 / 作業系統
 .DS_Store
