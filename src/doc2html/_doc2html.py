@@ -110,7 +110,7 @@ class Doc2Html:
         回傳的 ConvertedDocument 同時提供 `.html`（完整文件）與
         `.body_html`（僅片段），呼叫端可自行取用，毋需事先指定。
         """
-        if isinstance(source, (str, os.PathLike)) and _looks_like_path(source):
+        if isinstance(source, (str, os.PathLike)):
             return self.convert_local(
                 source, stream_info=stream_info, title=title
             )
@@ -217,13 +217,6 @@ class ConvertedDocument:
 
 
 # ---- 模組層小工具 --------------------------------------------------
-
-
-def _looks_like_path(source) -> bool:
-    try:
-        return os.path.exists(os.fspath(source))
-    except (TypeError, ValueError):
-        return False
 
 
 def _guess_stream_info(path: str) -> StreamInfo:

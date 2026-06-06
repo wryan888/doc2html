@@ -39,6 +39,8 @@ dev = [
     "pytest>=8.0",
     "reportlab>=4.0",  # 產生測試用 PDF
     "ruff>=0.6",
+    "mypy>=1.11",
+    "types-openpyxl",  # openpyxl 的型別 stub
 ]
 
 [project.scripts]
@@ -68,3 +70,12 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/doc2html"]
+
+# pypdfium2 沒有 py.typed / 官方 stub，忽略其缺型別資訊的警告
+[[tool.mypy.overrides]]
+module = ["pypdfium2", "pypdfium2.*"]
+ignore_missing_imports = true
