@@ -146,6 +146,41 @@ def docx_anchor_file(tmp_path):
 
 
 @pytest.fixture
+def docx_bookmark_file(tmp_path):
+    """書籤（含 _GoBack）+ 指向書籤的內部錨點連結。"""
+    docx = pytest.importorskip("docx")
+    from docx.oxml.shared import OxmlElement, qn
+
+    def bookmark(paragraph, bm_id, name):
+        start = OxmlElement("w:bookmarkStart")
+        start.set(qn("w:id"), bm_id)
+        start.set(qn("w:name"), name)
+        paragraph._p.insert(0, start)
+        end = OxmlElement("w:bookmarkEnd")
+        end.set(qn("w:id"), bm_id)
+        paragraph._p.append(end)
+
+    p = tmp_path / "bookmark.docx"
+    d = docx.Document()
+    heading = d.add_heading("第一章", level=1)
+    bookmark(heading, "0", "chap1")
+    bookmark(heading, "1", "_GoBack")  # Word 自動插入的書籤，應被略過
+
+    para = d.add_paragraph("回到 ")
+    hl = OxmlElement("w:hyperlink")
+    hl.set(qn("w:anchor"), "chap1")
+    r = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "第一章"
+    r.append(t)
+    hl.append(r)
+    para._p.append(hl)
+
+    d.save(p)
+    return p
+
+
+@pytest.fixture
 def xlsx_file(tmp_path):
     openpyxl = pytest.importorskip("openpyxl")
     p = tmp_path / "sample.xlsx"

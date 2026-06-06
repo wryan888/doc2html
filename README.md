@@ -12,7 +12,7 @@
 | 格式 | 副檔名 | 依賴套件 | 重點能力 |
 |------|--------|----------|----------|
 | PDF | `.pdf` | `pdfplumber` | 文字、字級啟發式標題、**表格抽取** |
-| Word | `.docx` | `python-docx` | 標題/清單/表格、粗斜底線、**超連結**、**內嵌圖片** |
+| Word | `.docx` | `python-docx` | 標題/清單/表格、粗斜底線、**超連結**、**書籤錨點**、**內嵌圖片** |
 | Excel | `.xlsx` / `.xlsm` | `openpyxl` | 多工作表、表頭啟發式 |
 | PowerPoint | `.pptx` | `python-pptx` | 投影片分段、備忘稿、表格、**內嵌圖片** |
 | HTML | `.html` / `.htm` | `beautifulsoup4`（選用，無則退化處理） | 清理 script/style、抽 article/main |
@@ -22,6 +22,9 @@
 
 > **v0.2 新增**：DOCX 超連結、PDF 表格抽取（改用 pdfplumber）、DOCX/PPTX 圖片以
 > base64 data URI 內嵌（可關閉，見下方）。
+>
+> **v0.3 新增**：DOCX 書籤（`w:bookmarkStart`）→ `<a id>`，讓內部錨點連結
+> （目錄/交叉參考）在輸出的 HTML 裡真正能跳轉。
 
 ## 安裝
 

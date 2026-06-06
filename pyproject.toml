@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "doc2html"
-version = "0.2.1"
+version = "0.3.0"
 description = "把多種文件格式（PDF/Word/Excel/PPT/HTML/CSV/JSON/純文字）轉成 HTML，靈感來自 microsoft/markitdown。"
 readme = "README.md"
 requires-python = ">=3.10"

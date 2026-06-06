@@ -6,6 +6,9 @@
 v0.2 起額外處理：
 - 超連結（w:hyperlink）→ <a href>（外部連結用 rels 解析，內部錨點用 #anchor）
 - 內嵌圖片（w:drawing/a:blip）→ <img> base64 data URI
+
+v0.3 起：
+- 書籤（w:bookmarkStart）→ <a id="name">，讓內部錨點連結真正能跳轉
 """
 
 from __future__ import annotations
@@ -119,17 +122,32 @@ class DocxConverter(DocumentConverter):
         return "block", f"<p>{inner}</p>"
 
     def _paragraph_inner(self, para) -> str:
-        """依 XML 順序走訪段落子節點，處理一般 run 與超連結。"""
+        """依 XML 順序走訪段落子節點，處理書籤、一般 run 與超連結。"""
         from docx.oxml.ns import qn  # noqa: PLC0415
         from docx.text.run import Run  # noqa: PLC0415
 
         out = []
         for child in para._p:
-            if child.tag == qn("w:r"):
+            if child.tag == qn("w:bookmarkStart"):
+                anchor = self._bookmark_anchor(child, qn)
+                if anchor:
+                    out.append(anchor)
+            elif child.tag == qn("w:r"):
                 out.append(self._format_run(Run(child, para), para))
             elif child.tag == qn("w:hyperlink"):
                 out.append(self._hyperlink_html(child, para, qn, Run))
         return "".join(out)
+
+    def _bookmark_anchor(self, bm_element, qn) -> str:
+        """w:bookmarkStart → <a id="name">，作為內部錨點的跳轉目標。
+
+        Word 的目錄/交叉參考用書籤名（如 _Toc123）當錨點，對應到
+        v0.2 已支援的 <a href="#name">。略過 Word 自動插入的 _GoBack。
+        """
+        name = bm_element.get(qn("w:name"))
+        if not name or name == "_GoBack":
+            return ""
+        return f'<a id="{escape(name)}"></a>'
 
     def _format_run(self, run, para) -> str:
         """單一 run → HTML：優先輸出內嵌圖片，否則套用粗/斜/底線。"""

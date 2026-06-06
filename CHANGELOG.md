@@ -3,6 +3,17 @@
 本專案的所有重要變更都記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/)，
 版本遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [0.3.0] - 2026-06-06
+
+### Added
+- **DOCX 書籤**：`w:bookmarkStart` → `<a id="name">`，作為內部錨點跳轉目標。
+  搭配 v0.2 的 `<a href="#anchor">`，Word 目錄/交叉參考的文件內導覽現在
+  在輸出的 HTML 裡真正可用（自動略過 Word 插入的 `_GoBack`）。
+
+### Notes
+- 仍未支援：以 field code 產生的 TOC（`PAGEREF`/`HYPERLINK` 欄位）、
+  表格儲存格內的書籤（儲存格目前以純文字輸出）。
+
 ## [0.2.1] - 2026-06-06
 
 ### Fixed
@@ -40,6 +51,7 @@
 - 工程基礎：pytest 測試、ruff lint、GitHub Actions CI（Python 3.10–3.13）、
   sdist/wheel 打包、MIT 授權。
 
+[0.3.0]: https://github.com/wryan888/doc2html/releases/tag/v0.3.0
 [0.2.1]: https://github.com/wryan888/doc2html/releases/tag/v0.2.1
 [0.2.0]: https://github.com/wryan888/doc2html/releases/tag/v0.2.0
 [0.1.0]: https://github.com/wryan888/doc2html/releases/tag/v0.1.0

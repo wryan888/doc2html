@@ -10,7 +10,7 @@ from ._exceptions import (
 )
 from ._stream_info import StreamInfo
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 __all__ = [
     "Doc2Html",

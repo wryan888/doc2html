@@ -99,6 +99,19 @@ def test_docx_internal_anchor(docx_anchor_file):
     assert '<a href="#_Toc123">第一章</a>' in body
 
 
+def test_docx_bookmark_target(docx_bookmark_file):
+    body = convert(docx_bookmark_file).body_html
+    # 書籤產生跳轉目標 id，且與內部連結的 href 對得起來
+    assert '<a id="chap1"></a>' in body
+    assert '<a href="#chap1">第一章</a>' in body
+    assert body.index('id="chap1"') < body.index('href="#chap1"')
+
+
+def test_docx_bookmark_skips_goback(docx_bookmark_file):
+    body = convert(docx_bookmark_file).body_html
+    assert "_GoBack" not in body  # Word 自動書籤不應輸出
+
+
 def test_docx_embeds_image(docx_rich_file):
     body = convert(docx_rich_file).body_html
     assert '<img src="data:image/png;base64,' in body
