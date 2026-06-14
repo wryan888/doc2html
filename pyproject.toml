@@ -31,6 +31,12 @@ all = [
 ]
 # OCR：把掃描頁 rasterize 成圖片（backend 無關），再交給某個 OcrBackend。
 ocr = ["pypdfium2>=4", "pillow>=10"]
+# Google Drive 小工具（doc2html.gdrive，生態系共用；與核心轉換器無關）。
+gdrive = [
+    "google-api-python-client>=2.0",
+    "google-auth>=2.0",
+    "google-auth-oauthlib>=1.0",
+]
 # 用 Gemini 當 OCR 後端（雲端）；需設定 GEMINI_API_KEY。
 ocr-gemini = ["doc2html[ocr]", "google-genai>=1.0"]
 dev = [
