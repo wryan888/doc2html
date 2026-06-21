@@ -1,7 +1,8 @@
 """Google Drive 小工具（可選）：OAuth 服務、找/建資料夾、上傳/更新檔案。
 
 抽自 DocLib 與 LineArc 共用的那段 Drive 流程，收進 doc2html 這個生態系共用函式庫，
-消除兩處重複。**與核心轉換器無關**，需 `pip install 'doc2html[gdrive]'` 才有 google 套件。
+消除兩處重複。**與核心轉換器無關**，
+需 `pip install 'doc2html[gdrive]'` 才有 google 套件。
 
 沿用 drive.file 最小權限。憑證/ token 路徑由呼叫端傳入（各專案用各自的環境變數）。
 無頭環境（VM 常駐）請傳 interactive=False：token 失效時拋明確錯誤而非開瀏覽器。
@@ -20,7 +21,8 @@ def service(token_path: str | Path, credentials_path: str | Path,
     """建立 Drive API service。
 
     interactive=True：token 失效時開瀏覽器重新授權（有瀏覽器的 Mac）。
-    interactive=False：失效時拋 RuntimeError（無頭 VM）——請在 Mac 重授後把新 token 複製過去。
+    interactive=False：失效時拋 RuntimeError（無頭 VM）——
+    請在 Mac 重授後把新 token 複製過去。
     """
     try:
         from google.auth.exceptions import RefreshError
@@ -84,12 +86,17 @@ def folder_id_in_parent(svc, parent_id: str, name: str, *, create: bool = True) 
         f"name='{_esc_q(name)}' and '{parent_id}' in parents and "
         "mimeType='application/vnd.google-apps.folder' and trashed=false"
     )
-    items = svc.files().list(q=q, spaces="drive", fields="files(id)").execute().get("files", [])
+    items = svc.files().list(
+        q=q, spaces="drive", fields="files(id)").execute().get("files", [])
     if items:
         return items[0]["id"]
     if not create:
         raise FileNotFoundError(f"Drive 資料夾不存在：{name}（parent={parent_id}）")
-    meta = {"name": name, "mimeType": "application/vnd.google-apps.folder", "parents": [parent_id]}
+    meta = {
+        "name": name,
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [parent_id],
+    }
     return svc.files().create(body=meta, fields="id").execute()["id"]
 
 
@@ -103,7 +110,8 @@ def ensure_folder_path(svc, root_id: str, parts: list[str]) -> str:
 
 def find_named_folder(svc, name: str, *, parent_id: str | None = None) -> str | None:
     """依名稱找資料夾；parent_id 限定父層（None=My Drive 根下搜尋）。"""
-    q = f"name='{_esc_q(name)}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+    q = (f"name='{_esc_q(name)}' and "
+         "mimeType='application/vnd.google-apps.folder' and trashed=false")
     if parent_id:
         q += f" and '{parent_id}' in parents"
     items = svc.files().list(
@@ -136,7 +144,10 @@ def iter_folder_files(
                 if f["name"] in skip_dirs or f["name"].startswith("."):
                     continue
                 yield from iter_folder_files(
-                    svc, f["id"], skip_dirs=skip_dirs, rel_prefix=rel_prefix + (f["name"],),
+                    svc,
+                    f["id"],
+                    skip_dirs=skip_dirs,
+                    rel_prefix=rel_prefix + (f["name"],),
                 )
             else:
                 if f["name"].startswith("."):
@@ -149,8 +160,9 @@ def iter_folder_files(
 
 def download_file(svc, file_id: str, dest: str | Path) -> Path:
     """下載 Drive 檔案到本機路徑。"""
-    from googleapiclient.http import MediaIoBaseDownload
     import io
+
+    from googleapiclient.http import MediaIoBaseDownload
 
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -163,7 +175,9 @@ def download_file(svc, file_id: str, dest: str | Path) -> Path:
     return dest
 
 
-def move_file(svc, file_id: str, *, add_parent: str, remove_parent: str | None = None) -> dict:
+def move_file(
+    svc, file_id: str, *, add_parent: str, remove_parent: str | None = None
+) -> dict:
     """移動檔案到新 parent（Drive 上 inbox→archive）。"""
     kwargs = {"fileId": file_id, "addParents": add_parent, "fields": "id, parents"}
     if remove_parent:
@@ -173,7 +187,10 @@ def move_file(svc, file_id: str, *, add_parent: str, remove_parent: str | None =
 
 def upload(svc, parent_id: str, path: str | Path, *, existing_id: str | None = None,
            mimetype: str | None = None, fields: str = "id, webViewLink") -> dict:
-    """上傳新檔（existing_id=None）或更新既有檔（給 existing_id）。回傳 API 回應 dict。"""
+    """上傳新檔（existing_id=None）或更新既有檔（給 existing_id）。
+
+    回傳 API 回應 dict。
+    """
     from googleapiclient.http import MediaFileUpload
     path = Path(path)
     media = MediaFileUpload(str(path), mimetype=mimetype, resumable=True)
