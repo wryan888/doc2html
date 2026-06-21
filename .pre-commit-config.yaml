@@ -2,6 +2,12 @@
 # 安裝：pip install --user pre-commit && pre-commit install
 # 手動全庫掃描：pre-commit run --all-files
 repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16          # 對齊 CI 與本機 ruff 版本，升級時兩處一起改
+    hooks:
+      - id: ruff-check     # 等同 CI 的 `ruff check .`；--fix 自動修 I001 等，E501 仍會擋下
+        args: ["--fix"]
+
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
