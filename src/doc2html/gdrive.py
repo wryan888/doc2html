@@ -69,13 +69,111 @@ def _esc_q(s: str) -> str:
 
 
 def folder_id(svc, name: str) -> str:
-    """取得（或建立）指定名稱的資料夾，回傳 ID。"""
-    q = (f"name='{_esc_q(name)}' and "
-         "mimeType='application/vnd.google-apps.folder' and trashed=false")
-    items = svc.files().list(
-        q=q, spaces="drive", fields="files(id)").execute().get("files", [])
+    """取得（或建立）指定名稱的資料夾，回傳 ID。
+
+    注意：搭配 ``drive.file`` scope 時 ``files.list`` 可能看不到其他程式或手動建立的
+    同名資料夾，導致重複建立。生產環境請改用 ``resolve_named_folder`` + ID 快取。
+    """
+    items = list_named_folders(svc, name)
     if items:
         return items[0]["id"]
+    meta = {"name": name, "mimeType": "application/vnd.google-apps.folder"}
+    return svc.files().create(body=meta, fields="id").execute()["id"]
+
+
+def list_named_folders(svc, name: str, *, parent_id: str | None = None) -> list[dict]:
+    """列出所有同名、未刪除的資料夾（``drive`` scope 可見完整結果）。"""
+    q = (f"name='{_esc_q(name)}' and "
+         "mimeType='application/vnd.google-apps.folder' and trashed=false")
+    if parent_id:
+        q += f" and '{parent_id}' in parents"
+    items: list[dict] = []
+    page_token = None
+    while True:
+        resp = svc.files().list(
+            q=q,
+            spaces="drive",
+            fields="nextPageToken, files(id,name,createdTime,parents)",
+            pageToken=page_token,
+            pageSize=100,
+        ).execute()
+        items.extend(resp.get("files", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    return items
+
+
+def folder_exists(svc, folder_id: str) -> bool:
+    """資料夾是否存在且未在垃圾桶。"""
+    try:
+        meta = svc.files().get(fileId=folder_id, fields="id,trashed").execute()
+    except Exception:
+        return False
+    return not meta.get("trashed", False)
+
+
+def count_folder_children(svc, folder_id: str) -> int:
+    """計算資料夾內未刪除的子項目數（檔案 + 子資料夾）。"""
+    q = f"'{folder_id}' in parents and trashed=false"
+    n = 0
+    page_token = None
+    while True:
+        resp = svc.files().list(
+            q=q,
+            spaces="drive",
+            fields="nextPageToken, files(id)",
+            pageToken=page_token,
+            pageSize=1000,
+        ).execute()
+        n += len(resp.get("files", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    return n
+
+
+def pick_canonical_folder(
+    svc,
+    candidates: list[dict],
+    *,
+    preferred_id: str | None = None,
+) -> dict:
+    """多個同名資料夾時選定「正式」那一個：快取 ID > 子項目最多 > 最早建立。"""
+    if not candidates:
+        raise ValueError("candidates 不可為空")
+    if preferred_id:
+        for item in candidates:
+            if item["id"] == preferred_id:
+                return item
+    scored = []
+    for item in candidates:
+        scored.append((
+            count_folder_children(svc, item["id"]),
+            item.get("createdTime", ""),
+            item,
+        ))
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return scored[0][2]
+
+
+def resolve_named_folder(
+    svc,
+    name: str,
+    *,
+    parent_id: str | None = None,
+    preferred_id: str | None = None,
+    create: bool = False,
+) -> str:
+    """解析同名資料夾的 canonical ID；僅在確定不存在時才建立（需 ``create=True``）。"""
+    items = list_named_folders(svc, name, parent_id=parent_id)
+    if items:
+        return pick_canonical_folder(svc, items, preferred_id=preferred_id)["id"]
+    if not create:
+        where = f"（parent={parent_id}）" if parent_id else ""
+        raise FileNotFoundError(f"Drive 資料夾不存在：{name}{where}")
+    if parent_id:
+        return folder_id_in_parent(svc, parent_id, name, create=True)
     meta = {"name": name, "mimeType": "application/vnd.google-apps.folder"}
     return svc.files().create(body=meta, fields="id").execute()["id"]
 
